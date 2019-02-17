@@ -6,7 +6,7 @@ import itertools
 import random
 
 rnd = np.random
-rnd.seed(0)
+# rnd.seed(0)
 
 n = 10
 e = 5
