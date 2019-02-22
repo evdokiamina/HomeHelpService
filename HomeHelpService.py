@@ -6,7 +6,7 @@ import itertools
 import random
 
 rnd = np.random
-rnd.seed(0)
+#rnd.seed(0)
 
 n = 10
 e = 5
@@ -15,7 +15,7 @@ Q = n/e
 N = [i for i in range(n)]
 E = [i for i in range(n, n+e)]
 V = N+E
-# q = {i:rnd.randint(1,10) for i in N}
+q = {i:1 for i in N}
 
 loc_x = rnd.rand(len(V))*200
 loc_y = rnd.rand(len(V))*100
@@ -34,20 +34,27 @@ m = Model()
 
 # set variables
 x=m.addVars(A, vtype=GRB.BINARY, name='x')
-u=m.addVars(V, vtype=GRB.CONTINUOUS, ub=Q, name='u')
+u=m.addVars(N, vtype=GRB.CONTINUOUS, ub=Q, name='u')
 
+# R = []
+# for k in E:
+#   for i in x:
+#     R += [[k,i]]
+# r = m.addVars(R, vtype=GRB.BINARY, name='r')
 m.update()
 
-# #minimize problem 
-m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A), GRB.MINIMIZE)
+#minimize problem 
+m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A ), GRB.MINIMIZE)
 
-# #constraints
+
+#constraints
 con1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
 con2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in N)
 con3 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
-# con4 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
-# con5 = m.addConstrs((x[i,j] == 1) >> (u[i]+1==u[j]) for i,j in A if i!=0 and j!=0)
-# con6 = m.addConstrs(u[i]<=Q for i in N)
+con4 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
+con6 = m.addConstrs((x[i,j] == 1) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j)
+con7 = m.addConstrs((x[i,j] == 1) >> (u[i]+q[j]==u[j]) for i,j in A if i not in E and j not in E and i!=j)
+con8 = m.addConstrs(u[i]>=q[i] for i in N)
 
 
 def subtour(edges):
@@ -68,9 +75,8 @@ def subtour(edges):
     lengths.append(len(thiscycle))
     if sum(lengths) == v:
       break
-  #  return cycles[lengths.index(min(lengths))]
+  #return cycles[lengths.index(min(lengths))]
   return cycles
-
 
 def subtourelim(model, where):
   if where == GRB.callback.MIPSOL:
@@ -84,20 +90,14 @@ def subtourelim(model, where):
             selected += [(i,j)]
     # find the shortest cycle in the selected edge list
     tours = subtour(selected)
-    c = 0
-    for t in tours:    
-      if ([e for e in t if e in E]) == [] :
-        c += 1
-    if c > 0:
-      expr1 = 0 
+    if len(tours) != e:
       for t in tours:
-        expr2 = 0
+        expr1 = 0
         for i in range(len(t)):
           for j in range(i+1, len(t)):
-            expr1 += x[t[i], t[j]]
-            expr2 += x[t[i], t[j]]
-        model.cbLazy(expr2 <= Q)
-      model.cbLazy(expr1 <= e)
+            expr1 += x[t[i],t[j]]
+        model.cbLazy(expr1 <= Q)
+      #model.cbLazy(expr1 = e)  
 
 # Optimize
 m._vars = m.getVars()
