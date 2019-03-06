@@ -36,7 +36,7 @@ m = Model()
 
 # set variables
 x=m.addVars(A, vtype=GRB.CONTINUOUS, ub=2.0, name='x')
-u=m.addVars(V, vtype=GRB.INTEGER, name='u')
+u=m.addVars(V, obj=1.0, vtype=GRB.INTEGER, name='u')
 xnew=m.addVars(A, vtype=GRB.CONTINUOUS, ub=2.0,  name='u')
 
 m.update()
@@ -49,10 +49,12 @@ con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
 con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
 con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
 con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
+
 con3 = m.addConstrs((x[i,j] == 1) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j)
 con9 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
 con6 = m.addConstrs(u[i]<=Q for i in N)
-
+# for i in N:
+#   m.addConstr(sum(x[i,j] for j in N if i!=j) == 2)
 
 def subtour(edges):
   visited = [False]*v
@@ -107,20 +109,16 @@ def subtourelim(model, where):
         else: 
           I.append(node)
       S = SUnion[1:-1]
-      print(I)
+
       if len(S)>0:
+        print('apply lazy constraints')
         #constraint (3)
-        model.cbLazy(x[I[0],SUnion[0]] + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I)<= 2*len(S)+3)
-        #constraint (4)
+        # model.cbLazy((quicksum(x[i,SUnion[0]] for i in I) + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I))<= 2*len(S)+3)
+        # #constraint (4)
         # model.cbLazy(quicksum(x[i,SUnion[0]] for i in I ) + 3*x[SUnion[0],SUnion[len(SUnion)-1]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I) <= 4)
-        #constraint (2)
+        # #constraint (2)
         # model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
-    for i in range(v):
-      for j in range(v):
-        if (i != j):
-          sol = model.cbGetSolution(x[i,j])
-          if sol>1:
-            print(sol)
+
 # Optimize
 m._vars = m.getVars()
 m.params.LazyConstraints = 1

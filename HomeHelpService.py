@@ -6,7 +6,7 @@ import itertools
 import random
 
 rnd = np.random
-rnd.seed(0)
+# rnd.seed(0)
 
 n = 10
 e = 5
@@ -16,7 +16,7 @@ N = [i for i in range(n)]
 E = [i for i in range(n, n+e)]
 V = N+E
 q = {i:1 for i in N}
-
+# S = set(itertools.combinations(N, rn) for rn in range(n))
 loc_x = rnd.rand(len(V))*200
 loc_y = rnd.rand(len(V))*100
 A = [(i,j) for i in V for j in V if i != j]
@@ -31,7 +31,6 @@ for i in E:
     plt.plot(loc_x[i], loc_y[i], c='r', marker='s')
     plt.annotate('e=%d'%(i),(loc_x[i]+2, loc_y[i]))
 plt.axis('equal')
-
 #create model
 m = Model()
 
@@ -39,43 +38,17 @@ m = Model()
 x=m.addVars(A, vtype=GRB.BINARY, name='x')
 for i,j in x.keys():
     x[j,i] = x[i,j] # edge in opposite direction
-
-# u=m.addVars(a2, ub=2.0, vtype=GRB.INTEGER, name='u')
-
-# vars = {}
-# for i in range(numberOfCities):
-#   for j in range(i+1):
-#       vars[i,j] = m.addVar(obj=distance(points, i, j), vtype=GRB.BINARY, name='x')
-#       vars[j,i] = vars[i,j]
-#   m.update()
-
-# u=m.addVars(v, vtype=GRB.INTEGER, name='u')
-# y=m.addVars(v, vtype=GRB.CONTINUOUS, ub=Q+1, name='y')
-# y=m.addVars(E, vtype=GRB.BINARY, name='y')
+u=m.addVars(A, ub=2.0, vtype=GRB.INTEGER, name='u')
+for i,j in u.keys():
+  u[j,i] = u[i,j]
 m.update()
 
 #minimize problem 
 m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A ), GRB.MINIMIZE)
 
 #constraints
-con3 = m.addConstrs((x[i,j] == 1) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j)
-# con1 = m.addConstrs(quicksum(x[i,j] for i in N if i!=j)==2 for j in V)
-con1 =m.addConstrs(x.sum(i,'*') == 2 for i in N)
-# for i in range(n, v):
-#   m.addConstr(sum(x[i,j] for j in range(v) if i!=j) == 2)
-# con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
-# con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
-# con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
-# con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
-# con1_3 = m.addConstrs(quicksum(x[i,r] for i in V if i!=r)==1 for r in E)
-# con1_4 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in N)
-# con2_3 = m.addConstrs(quicksum(x[r,i] for i in V if i!=r)==1 for r in E)
-# con2_4 = m.addConstrs(quicksum(x[j,i] for i in V if i!=j)==1 for j in N)
-# con7 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+Q*x[i,j] <= Q-1) for i,j in A if i not in E and j not in E and i!=j)
-# con7 = m.addConstrs((x[i,j] == 1) >> (y[i]+1 ==y[j]) for i,j in A if i not in E and j not in E and i!=j)
-# con9 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
-# con8 = m.addConstrs(y[i]<=2 for i in N) 
-#con10 = m.addConstrs((x[i,j] == 1) >> (y[i] == 1) for i,j in A if i in E and j in E and i!=j)
+con1 = m.addConstrs(x.sum(i,'*') == 2 for i in N)
+con2 = m.addConstrs((x[i,j] == 1 ) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j )
 
 
 def subtour(edges):
@@ -110,10 +83,17 @@ def subtourelim(model, where):
       for j in range(v):
         if (i != j):
           sol = model.cbGetSolution(x[i,j])
+          #potential idea for x E {0,1,2}
+          # if ( model.cbGetSolution(x[i,j]) == 1) and  ( model.cbGetSolution(x[j,i]) == 1):
+          #   u[i,j]= 2
+          # else:
+          #   u[i,j] = sol
+          # model.update()
           if sol > 0.5:
             selected += [(i,j)]
     # find the shortest cycle in the selected edge list
     tours = subtour(selected)
+    print(tours)
     for t in tours:
       SUnion = []
       I = []
@@ -123,13 +103,16 @@ def subtourelim(model, where):
         else: 
           I.append(node)
       S = SUnion[1:-1]
-      if len(S)>0:
-        #constraint (3)
-        model.cbLazy(quicksum(x[i,SUnion[0]] for i in I ) + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I)<= 2*len(S)+3)
-         #constraint (4)
-        model.cbLazy(quicksum(x[i,SUnion[0]] for i in I ) + 3*x[SUnion[0],SUnion[len(SUnion)-1]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I) <= 4)
+      if len(S)>0 and len(I)>0:
+        print('tour > 0 ')
         #constraint (2)
-        model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(t, 2)) <= len(t)-1)
+        model.cbLazy(quicksum(u[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
+        #constraint (3)
+        model.cbLazy(u[I[0],SUnion[0]] + 2*quicksum(u[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(u[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0])<= 2*len(S)+3)
+        #constraint (4)
+        model.cbLazy(quicksum(u[i,SUnion[0]] for i in I) + 3*u[SUnion[0],SUnion[len(SUnion)-1]] + quicksum(u[i,SUnion[len(SUnion)-1]] for i in E if i not in I) <= 4)
+        #constraint (5) eliminates  tours with only clients
+        # model.cbLazy(quicksum(u[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)
 
 # Optimize
 m._vars = m.getVars()
