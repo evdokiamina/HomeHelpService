@@ -6,7 +6,9 @@ import itertools
 import random
 
 rnd = np.random
-# rnd.seed(0)
+# rnd.seed(3585893720)
+# rnd.seed(3947981402)
+print("Seed was:", rnd.get_state()[1][0])
 
 n = 10
 e = 5
@@ -38,9 +40,7 @@ m = Model()
 x=m.addVars(A, vtype=GRB.BINARY, name='x')
 for i,j in x.keys():
     x[j,i] = x[i,j] # edge in opposite direction
-u=m.addVars(A, ub=2.0, vtype=GRB.INTEGER, name='u')
-for i,j in u.keys():
-  u[j,i] = u[i,j]
+u=m.addVars(V, obj=1.0, vtype=GRB.CONTINUOUS, name='u')
 m.update()
 
 #minimize problem 
@@ -49,6 +49,9 @@ m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A ), GRB.MINIMIZE)
 #constraints
 con1 = m.addConstrs(x.sum(i,'*') == 2 for i in N)
 con2 = m.addConstrs((x[i,j] == 1 ) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j )
+# con3 = m.addConstrs((x[i,j] == 1) >> (u[j]== u[i] + 1) for i,j in A if i!=j and i not in E and j not in E)
+# con4 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
+# con5 = m.addConstrs(u[i]<=Q for i in N)
 
 
 def subtour(edges):
@@ -81,6 +84,7 @@ def subtour(edges):
 
 def subtourelim(model, where):
   if where == GRB.callback.MIPSOL:
+    print('in subtouelim')
     selected = []
     # make a list of edges selected in the solution
     for i in range(v):
@@ -88,7 +92,17 @@ def subtourelim(model, where):
         if (i != j):
           sol = model.cbGetSolution(x[i,j])
           if sol > 0.5:
-            selected += [(i,j)]
+            selected += [(i,j)]   
+    # for i in N:
+    #     plt.plot(loc_x[i], loc_y[i], c='b', marker='o')
+    #     plt.annotate('c=%d'%(i),(loc_x[i]+2, loc_y[i]))
+    # for i in E:
+    #     plt.plot(loc_x[i], loc_y[i], c='r', marker='s')
+    #     plt.annotate('e=%d'%(i),(loc_x[i]+2, loc_y[i]))
+    # plt.axis('equal')
+    # for i in selected:
+    #     plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+    # plt.show()
     # find the shortest cycle in the selected edge list
     tours = subtour(selected)
     print(tours)
@@ -101,20 +115,36 @@ def subtourelim(model, where):
         else: 
           I.append(node)
       S = SUnion[1:-1]
-      if len(I)==0:
-        print('tour with only clients')
-        #constraint (5) eliminates  tours with only clients
-        model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)    
-      if len(S)>0 :
-        print('2 employees used')
-        # constraint (2)
-        # model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
-        # constraint (3)
-        # model.cbLazy(x[I[0],SUnion[0]] + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0])<= 2*len(S)+3)
-        # constraint (4)
-        # model.cbLazy(quicksum(x[i,SUnion[0]] for i in I) + 3*x[SUnion[0],SUnion[len(SUnion)-1]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I) <= 4)
-        #constraint (5) eliminates  tours with only clients
-        # model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)
+      if len(S)>0:
+        if len(I) == 0:
+          print('tour with only clients')
+          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)    
+          model.update()
+        elif len(I)>1 :
+          print('2 employees used')
+          model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0]) <= 1)
+          model.update()
+        else:
+          print('tour not connected')
+          # constraint (2) -this
+          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
+          model.update()
+      # elif len(SUnion)>0:
+      #   if len(I) >0 and len(SUnion)>1:
+      #     # constraint (4)
+      #     model.cbLazy(quicksum(x[i,SUnion[0]] for i in I) + 3*x[SUnion[0],SUnion[len(SUnion)-1]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0]) <= 4)
+      #     model.update()
+      #   else:
+      #     model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <= len(SUnion)-1)
+      #     model.update()  
+          # constraint (2) -this
+          # model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
+          # constraint (3) - this 
+          # model.cbLazy(x[I[0],SUnion[0]] + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0])<= 2*len(S) + 3)
+          # this
+          # model.cbLazy(quicksum(x[SUnion[len(SUnion)-1], i] for i in E if i!=I[0])<= 0)
+          #constraint (5) eliminates  tours with only clients
+          # model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)      
 
 
 # Given a tuplelist of edges, find the shortest subtour
@@ -133,7 +163,9 @@ if status == GRB.Status.OPTIMAL:
     print('The optimal objective is %g' % m.objVal)
     sol = m.getAttr('x', x)
     selected = [i for i in sol if sol[i] == 1]
-    print(selected)
+    finalTour = subtour(selected)
+    print('---------FINAL TOUR-----------')
+    print(finalTour)
     for i in selected:
         plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
     plt.show()
