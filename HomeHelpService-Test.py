@@ -6,7 +6,7 @@ import itertools
 import random
 
 rnd = np.random
-rnd.seed( 36372395)
+# rnd.seed( 36372395)
 print("Seed was:", rnd.get_state()[1][0])
 
 n = 10
@@ -60,12 +60,20 @@ def subtour(edges):
   visited = [False]*v
   cycles = []
   lengths = []
+  selected = [[] for i in range(v)]
+  for x,y in edges:
+    selected[x].append(y)
   while True:
     current = visited.index(False)
+    for i in range(v):
+      if visited[i] == False:
+        neighbors = [x for x in selected[i]]
+        if len(neighbors) == 1:
+          current = i
     thiscycle = [current]
     while True:
       visited[current] = True
-      neighbors = [x for x in edges[current] if not visited[x]]
+      neighbors = [x for x in selected[current] if not visited[x]]
       if len(neighbors) == 0:
         break
       current = neighbors[0]
@@ -74,7 +82,6 @@ def subtour(edges):
     lengths.append(len(thiscycle))
     if sum(lengths) == v:
       break
-  #  return cycles[lengths.index(min(lengths))]
   return cycles
 
 def subtourelim(model, where):
@@ -87,17 +94,6 @@ def subtourelim(model, where):
           sol = model.cbGetSolution(x[i,j])
           if sol > 0.5:
             selected += [(i,j)]
-    # for i in N:
-    #   plt.plot(loc_x[i], loc_y[i], c='b', marker='o')
-    #   plt.annotate('c=%d'%(i),(loc_x[i]+2, loc_y[i]))
-    # for i in E:
-    #   plt.plot(loc_x[i], loc_y[i], c='r', marker='s')
-    #   plt.annotate('e=%d'%(i),(loc_x[i]+2, loc_y[i]))
-    # plt.axis('equal')
-    # for i in selected:
-    #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
-    # plt.show()
-    # find the shortest cycle in the selected edge list
     tours = subtour(selected)
     print(tours)
     for t in tours:
@@ -109,19 +105,41 @@ def subtourelim(model, where):
         else: 
           I.append(node)
       S = SUnion[1:-1]
-
       if len(S)>0:
-        print('apply lazy constraints')
-        #constraint (3)
-        # model.cbLazy((quicksum(x[i,SUnion[0]] for i in I) + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I))<= 2*len(S)+3)
-        # #constraint (4)
-        # model.cbLazy(quicksum(x[i,SUnion[0]] for i in I ) + 3*x[SUnion[0],SUnion[len(SUnion)-1]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i not in I) <= 4)
-        # #constraint (2)
-        # model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
+        if len(I) == 0:
+          print('tour with only clients  in S>0')
+          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)
+          # model.cbLazy(x[I[0],SUnion[0]] + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0])<= 2*len(S) + 3)    
+          model.update()
+        elif len(I)>1 :
+          print('2 employees used in S>0')
+          model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0]) <= 1)
+          model.update()
+        else:
+          print('tour not connected  in S>0')
+          # constraint (2) -this
+          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
+          model.update()
+      elif len(SUnion)==2:
+        if len(I) == 0:
+          print('tour with only clients')
+          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=1)
+          model.update()
+        elif len(I)>1 :
+          print('2 employees used')
+          model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0]) <= 1)
+          model.update()
+        else:
+          print('tour not connected')
+          # constraint (2) -this
+          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <= 1)
+          model.update()
 
 # Optimize
 m._vars = m.getVars()
 m.params.LazyConstraints = 1
+m.params.Threads = 1
+m.params.Cuts = 3
 m.optimize(subtourelim)
 status = m.status
 
@@ -132,6 +150,9 @@ if status == GRB.Status.OPTIMAL:
     print('The optimal objective is %g' % m.objVal)
     sol = m.getAttr('x', x)
     selected = [i for i in sol if sol[i] > 0.5]
+    finalTour = subtour(selected)
+    print('---------FINAL TOUR-----------')
+    print(finalTour)
     for i in selected:
         plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
     plt.show()
