@@ -6,10 +6,23 @@ import itertools
 import random
 
 rnd = np.random
-# rnd.seed( 36372395)
+# rnd.seed(391761407)
+# rnd.seed(3914761407)
+# rnd.seed(3928112723)
+# rnd.seed(2734086387)
+# rnd.seed(2278517282)
+# rnd.seed(3933075158)
+# rnd.seed(4214019853)
+# rnd.seed(3345479024) # doesnt work
+# rnd.seed(3761229082) # doesnt work
+# rnd.seed(3316967774) #doesnt work
+# rnd.seed(3636448687) #doesnt work
+# rnd.seed(2387376734)
+# rnd.seed(2250195004)
 print("Seed was:", rnd.get_state()[1][0])
 
-n = 10
+
+n = 11
 e = 5
 v = n+e
 Q = n/e
@@ -52,9 +65,9 @@ con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
 
 con3 = m.addConstrs((x[i,j] == 1) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j)
 con9 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
-con6 = m.addConstrs(u[i]<=Q for i in N)
+# con6 = m.addConstrs(u[i]<=Q for i in N)
 # for i in N:
-#   m.addConstr(sum(x[i,j] for j in N if i!=j) == 2)
+#   m.addConstr(sum(x[i,j] for j in V if i!=j) == 2)
 
 def subtour(edges):
   visited = [False]*v
@@ -105,40 +118,24 @@ def subtourelim(model, where):
         else: 
           I.append(node)
       S = SUnion[1:-1]
-      if len(S)>0:
-        if len(I) == 0:
-          print('tour with only clients  in S>0')
-          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=len(S)+1)
-          # model.cbLazy(x[I[0],SUnion[0]] + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0])<= 2*len(S) + 3)    
-          model.update()
-        elif len(I)>1 :
-          print('2 employees used in S>0')
-          model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0]) <= 1)
-          model.update()
-        else:
-          print('tour not connected  in S>0')
-          # constraint (2) -this
-          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(S, 2)) <= len(S)-1)
-          model.update()
-      elif len(SUnion)==2:
-        if len(I) == 0:
-          print('tour with only clients')
-          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <=1)
-          model.update()
-        elif len(I)>1 :
-          print('2 employees used')
-          model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0]) <= 1)
-          model.update()
-        else:
-          print('tour not connected')
-          # constraint (2) -this
-          model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2)) <= 1)
-          model.update()
+      if len(I) == 0 and len(t)>1:
+        print('no empoloyees')
+        model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(t, 2))<= len(t)-1)
+      elif len(I)>=2 and len(SUnion) == 1:
+        model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[0]] for i in E if i!=I[0])<=1)
+      elif len(S)>0 and len(I)>=2:
+        print('more than 1 employee, more than 2 clients')
+        # model.cbLazy(x[I[0],SUnion[0]] + 2*quicksum(x[i,j] for i,j in itertools.combinations(SUnion, 2))+ quicksum(x[i,SUnion[len(SUnion)-1]] for i in E if i!=I[0])<=2*len(S)+3)
+        model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
+      elif len(SUnion) == 2 and len(I)>=2:
+        print('only 2 clients and 2 employees')
+        # model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<=1)
+        model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
 
 # Optimize
 m._vars = m.getVars()
 m.params.LazyConstraints = 1
-m.params.Threads = 1
+# m.params.Threads = 1
 m.params.Cuts = 3
 m.optimize(subtourelim)
 status = m.status
