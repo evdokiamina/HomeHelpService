@@ -1,0 +1,17 @@
+<LoginScreen>:
+  name:'login'
+  BoxLayout:
+    Button:
+      {% comment %} text: 'Login' {% endcomment %}
+      on_press: root.manager.current = 'main'
+    # Button:
+    #   text: 'Quit'
+
+<MainScreen>:
+  name:'main'
+  BoxLayout:
+    # Button:
+    #   text: 'My settings button'
+    Button:
+      text: 'Exit'
+      on_press: root.manager.current = 'login'

@@ -1,0 +1,43 @@
+<LoginScreen>:
+  #name:'login'
+  size_hint: None, None
+    BoxLayout:
+      canvas.before:
+        Color:
+          rgba: 0, 0, 1, 1  # blue
+        Rectangle:
+          pos: self.pos
+          size: self.size
+      size: self.parent.size 
+      pos: self.parent.pos
+      orientation: 'vertical'
+      Button:
+        text: 'Login'
+        on_press: root.manager.current = 'data'
+
+<DataScreen>:
+  name:'data'
+  BoxLayout:
+    Button:
+      text: 'Exit'
+      on_press: root.manager.current = 'login'
+
+<MainScreen>:
+  name: 'main'
+  AnchorLayout:
+    canvas.before:
+      Color:
+        rgba: 1, 1, 1, 1  # white
+      Rectangle:
+        pos: self.pos
+        size: self.size
+    size: self.parent.size
+    anchor_x: 'center'
+    anchor_y: 'center'
+    LoginScreen:
+      size: 200, 100
+
+<MyApp>:
+  FloatLayout:
+    LoginScreen:
+      center: 0.5, 0.5
