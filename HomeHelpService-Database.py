@@ -1,16 +1,10 @@
 import mysql.connector
 from mysql.connector import Error
 import HomeHelpService
+import databaseConfig as cfg
 
 try:
-    config = {
-        'user': 'c1544038',
-        'password': 'Pefti00pefti00',
-        'host': 'csmysql.cs.cf.ac.uk',
-        'port': '3306',
-        'database': 'c1544038_homehelpservice'
-    }
-    mySQLconnection  = mysql.connector.connect(**config)
+    mySQLconnection  = mysql.connector.connect(**cfg.mysql)
     employees = "select * from Employees"
     patients = "select * from patients"
     cursor = mySQLconnection .cursor()
