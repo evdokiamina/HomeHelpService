@@ -7,6 +7,7 @@ import random
 import mysql.connector
 import googlemaps
 import gmplot
+import GoogleAPIKey as key
 
 rnd = np.random
 # rnd.seed(391761407)
@@ -179,8 +180,8 @@ def makeRandomAssignments():
 
 
 def makeAssignments(N, E, locations):
-  API_key = 'AIzaSyB9sCDlGCG0hnDydbCAXAko3ogG34C4-0w'#enter Google Maps API key
-  gmaps = googlemaps.Client(key=API_key)
+  
+  gmaps = googlemaps.Client(key=key.API_key)
 
   n = len(N)
   e = len(E)
