@@ -2,3 +2,4 @@ databaseConfig.py
 gurobi.log
 tempCodeRunnerFile.py
 GoogleAPIKey.py
+cache/

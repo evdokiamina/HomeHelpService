@@ -13,6 +13,7 @@ rnd = np.random
 # rnd.seed(391761407)
 # rnd.seed(3345479024) 
 print("Seed was:", rnd.get_state()[1][0])
+
 def makeRandomAssignments():
   n = 10
   e = 5
@@ -22,12 +23,9 @@ def makeRandomAssignments():
   E = [i for i in range(n, n+e)]
   V = N+E
 
-  print(v)
-  print(V)
-
   loc_x = rnd.rand(len(V))*200
   loc_y = rnd.rand(len(V))*100
-  print(loc_x)
+
   A = [(i,j) for i in V  for j in V if i != j]
   c = {(i,j):np.hypot(loc_x[i]-loc_x[j],loc_y[i]-loc_y[j]) for i,j in A}
   for i in N:
@@ -55,12 +53,8 @@ def makeRandomAssignments():
   con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
   con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
   con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
-
   con3 = m.addConstrs((x[i,j] == 1) >> (x[i,j] == 0) for i,j in A if i in E and j in E and i!=j)
   con9 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
-  # con6 = m.addConstrs(u[i]<=Q for i in N)
-  # for i in N:
-  #   m.addConstr(sum(x[i,j] for j in V if i!=j) == 2)
 
   def subtour(edges):
     visited = [False]*v
@@ -144,7 +138,9 @@ def makeRandomAssignments():
       for i in selected:
           plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
       plt.show()
+      return(finalTour)
       exit(0)
+
   if status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
       print('Optimization was stopped with status %d' % status)
       exit(0)
@@ -167,6 +163,7 @@ def makeRandomAssignments():
       for i in selected:
           plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
       plt.show()
+      return(finalTour)
       exit(0)
 
   if status in (GRB.Status.INF_OR_UNBD, GRB.Status.INFEASIBLE, GRB.Status.UNBOUNDED):
@@ -178,8 +175,7 @@ def makeRandomAssignments():
       print('Optimization was stopped with status %d' % status)
       exit(1)
 
-
-def makeAssignments(N, E, locations):
+def makeAPIAssignments(N, E, locations):
   
   gmaps = googlemaps.Client(key=key.API_key)
 
@@ -189,6 +185,7 @@ def makeAssignments(N, E, locations):
   Q = n/e
   V = N+E
   A = [(i,j) for i in V for j in V if i != j]
+  print(locations)
   c = {(i,j): gmaps.distance_matrix(locations[i], locations[j], mode='walking')["rows"][0]["elements"][0]["distance"]["value"] for i,j in A}
   
   #place the map in the middle of Cardiff
@@ -206,7 +203,6 @@ def makeAssignments(N, E, locations):
     plt.plot(locations[i][0], locations[i][1], c='b', marker='o')
     plt.annotate('c=%d'%(i),(locations[i][0], locations[i][1]))
   for i in E:
-    print(locations[i][0])
     plt.plot(locations[i][0], locations[i][1], c='r', marker='s')
     plt.annotate('e=%d'%(i),(locations[i][0], locations[i][1]))
   plt.axis('equal')
@@ -269,8 +265,6 @@ def makeAssignments(N, E, locations):
             if sol > 0.5:
               selected += [(i,j)]
       tours = subtour(selected)
-      print('--------TOURS-----------')
-      print(tours)
       for t in tours:
         SUnion = []
         I = []
@@ -314,6 +308,7 @@ def makeAssignments(N, E, locations):
       for i in selected:
         plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
       plt.show()
+      return finalTour
       exit(0)
   if status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
       print('Optimization was stopped with status %d' % status)
@@ -337,6 +332,7 @@ def makeAssignments(N, E, locations):
       for i in selected:
         plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
       plt.show()
+      return finalTour
       exit(0)
 
   if status in (GRB.Status.INF_OR_UNBD, GRB.Status.INFEASIBLE, GRB.Status.UNBOUNDED):
@@ -350,25 +346,17 @@ def makeAssignments(N, E, locations):
 
 
 
-def makeRAssignments():
-  API_key = 'AIzaSyB9sCDlGCG0hnDydbCAXAko3ogG34C4-0w'#enter Google Maps API key
-  gmaps = googlemaps.Client(key=API_key)
-  
-  n = 10
-  e = 5
-  Q = n/e
-  N = [i for i in range(n)]
-  E = [i for i in range(n, n+e)]
+def makeNoAPIAssignments(N, E, locations):
+
+  n = len(N)
+  e = len(E)
   v = n+e
+  Q = n/e
   V = N+E
   A = [(i,j) for i in V for j in V if i != j]
-  loc_x = np.random.uniform(low=50, high=51, size=(v))
-  loc_y = np.random.uniform(low=-3, high=-4, size=(v))
-  locations = {}
-  for i in range(v):
-    locations[i] = [(loc_x[i], loc_y[i])]
-  c = {(i,j): gmaps.distance_matrix(locations[i], locations[j], mode='walking')["rows"][0]["elements"][0]["distance"]["value"] for i,j in A}
-  # c = {(i,j): gmaps.distance_matrix(locations[i], locations[j], mode='walking')["rows"][0]["elements"][0]["distance"]["value"] for i,j in A}
+  print(locations)
+  c = {(i,j): distance(locations[i], locations[j]) for i,j in A}
+  
   #place the map in the middle of Cardiff
   # gmap = gmplot.GoogleMapPlotter(51.481583, -3.179090, 13)
 
@@ -384,7 +372,6 @@ def makeRAssignments():
     plt.plot(locations[i][0], locations[i][1], c='b', marker='o')
     plt.annotate('c=%d'%(i),(locations[i][0], locations[i][1]))
   for i in E:
-    print(locations[i][0])
     plt.plot(locations[i][0], locations[i][1], c='r', marker='s')
     plt.annotate('e=%d'%(i),(locations[i][0], locations[i][1]))
   plt.axis('equal')
@@ -447,8 +434,6 @@ def makeRAssignments():
             if sol > 0.5:
               selected += [(i,j)]
       tours = subtour(selected)
-      print('--------TOURS-----------')
-      print(tours)
       for t in tours:
         SUnion = []
         I = []
@@ -492,6 +477,7 @@ def makeRAssignments():
       for i in selected:
         plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
       plt.show()
+      return finalTour
       exit(0)
   if status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
       print('Optimization was stopped with status %d' % status)
@@ -515,6 +501,7 @@ def makeRAssignments():
       for i in selected:
         plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
       plt.show()
+      return finalTour
       exit(0)
 
   if status in (GRB.Status.INF_OR_UNBD, GRB.Status.INFEASIBLE, GRB.Status.UNBOUNDED):
@@ -525,4 +512,17 @@ def makeRAssignments():
   if status != GRB.Status.OPTIMAL:
       print('Optimization was stopped with status %d' % status)
       exit(1)
-# makeRAssignments()
+
+def distance(origin, destination):
+    lat1, lon1 = origin
+    lat2, lon2 = destination
+    radius = 6371 # km
+
+    dlat = math.radians(lat2-lat1)
+    dlon = math.radians(lon2-lon1)
+    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
+        * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    d = radius * c
+
+    return d
