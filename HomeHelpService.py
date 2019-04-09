@@ -4,30 +4,39 @@ import matplotlib.pyplot as plt
 import math
 import itertools
 import random
-import mysql.connector
 import googlemaps
-import gmplot
 import GoogleAPIKey as key
+import time
 
 rnd = np.random
-# rnd.seed(391761407)
-# rnd.seed(3345479024) 
 print("Seed was:", rnd.get_state()[1][0])
 
 def makeRandomAssignments():
-  n = 10
-  e = 5
+  #initialise random data 
+  e = random.randint(1, 7)
+  n = random.randint(e, e+5)
+  # n = 11
+  # e = 6
   v = n+e
-  Q = n/e
+  Q = round(n/e)
   N = [i for i in range(n)]
   E = [i for i in range(n, n+e)]
   V = N+E
-
+  print(E)
+  print(N)
+  loc_x = []
+  loc_y = []
   loc_x = rnd.rand(len(V))*200
-  loc_y = rnd.rand(len(V))*100
-
+  loc_y = rnd.rand(len(V))*200
+  locations = {}
+  for i in range(v):
+    locations[i] = (loc_x[i], loc_y[i])
+  print(locations)
+  # locations = {0: (37.49029961381596, 44.264469318304236), 1: (146.3611770687018, 164.05030582035002), 2: (45.346287627882, 26.19454558118528), 3: (100.11100577471078, 71.81303584360535), 4: (160.2143250292677, 111.40947416135228), 5: (53.12452695690513, 122.89466265526194), 6: (22.97804307052902, 178.98674041221426), 7: (93.03075725951064, 193.8948550491515), 8: (195.5675274884949, 124.38690164596534), 9: (180.4959488335691, 76.15846780243596), 10: (176.89452231125577, 45.6794106900207), 11: (127.39238863466808, 176.1005156156058), 12: (88.49106481885356, 89.63373956486502), 13: (160.02079739445284, 140.11704233136098), 14: (135.45988008498318, 134.18067142137855), 15: (153.4569973718195, 158.44897936199612), 16: (19.67735826250663, 126.61583269940371), 17: (175.96063390889083, 123.2695594020563)}
   A = [(i,j) for i in V  for j in V if i != j]
-  c = {(i,j):np.hypot(loc_x[i]-loc_x[j],loc_y[i]-loc_y[j]) for i,j in A}
+  c = {(i,j):np.hypot(locations[i][0]-locations[j][0],locations[i][1]-locations[j][1]) for i,j in A}
+  
+  # plot marks on a graph
   for i in N:
       plt.plot(loc_x[i], loc_y[i], c='b', marker='o')
       plt.annotate('c=%d'%(i),(loc_x[i]+2, loc_y[i]))
@@ -35,7 +44,7 @@ def makeRandomAssignments():
       plt.plot(loc_x[i], loc_y[i], c='r', marker='s')
       plt.annotate('e=%d'%(i),(loc_x[i]+2, loc_y[i]))
   plt.axis('equal')
-
+  # plt.show()
   #create model
   m = Model()
 
@@ -45,10 +54,10 @@ def makeRandomAssignments():
 
   m.update()
 
-  # #minimize problem 
+  #minimize problem 
   m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A), GRB.MINIMIZE)
 
-  # #constraints
+  #constraints
   con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
   con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
   con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
@@ -115,70 +124,140 @@ def makeRandomAssignments():
         elif len(SUnion) == 2 and len(I)>=2:
           print('only 2 clients and 2 employees')
           model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
-
+        # elif len(SUnion)>0 and len(I)>=2:
+        #   print('more than 1 employee, more than 2 clients')
+        #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
+  
   # Optimize
   m._vars = m.getVars()
   m.params.LazyConstraints = 1
-  # m.params.Threads = 1
   m.params.Cuts = 0
+  m.params.TimeLimit = 120
   m.optimize(subtourelim)
   status = m.status
 
   if status == GRB.Status.UNBOUNDED:
       print('The model cannot be solved because it is unbounded')
+      return([],e, n)
       exit(0)
-  if status == GRB.Status.OPTIMAL:
+  elif status == GRB.Status.OPTIMAL:
       print('The optimal objective is %g' % m.objVal)
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
       print('---------FINAL TOUR-----------')
       print(finalTour)
-      print(selected)
-      for i in selected:
-          plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
-      plt.show()
-      return(finalTour)
-      exit(0)
-
-  if status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
+      error=False
+      for t in finalTour:
+        c = 0 
+        for node in t:
+          if node in E:
+            c +=1
+        if c!=1:
+          error=True
+      if not error:
+        # for i in selected:
+        #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+        # plt.show()
+        return(finalTour,e, n)
+        exit(0)
+  elif status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
       print('Optimization was stopped with status %d' % status)
+      return([],e, n)
       exit(0)
-
-  print('The model is infeasible; relaxing the constraints')
+  
+  #relax infeasible model once
+  print('The model is infeasible; relaxing the constraints once')
   m.feasRelaxS(0, False, False, True)
-  # m.feasRelaxS(2, False, False, True)
-  # m.relax()
+  #relaxed model keeps deggree constraints
   m.optimize(subtourelim)
   status = m.status
-
   if status == GRB.Status.OPTIMAL:
+    print('The optimal objective is %g' % m.objVal)
+    sol = m.getAttr('x', x)
+    selected = [i for i in sol if sol[i] > 0.5]
+    finalTour = subtour(selected)
+    print('---------FINAL TOUR-----------')
+    print(finalTour)
+    error = False
+    for t in finalTour:
+      c = 0 
+      for node in t:
+        if node in E:
+          c +=1
+      if c!=1:
+        error=True
+    if not error:
+      # for i in selected:
+      #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+      # plt.show()
+      return(finalTour,e, n)
+      exit(0)
+
+  #relax infeasible model until valid solution generated
+  counter = 0
+  
+  while counter<=30:
+    print('The model is infeasible; relaxing the constraints until Feasible')
+    con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
+    con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
+    con9 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
+    con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
+    con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
+    m.feasRelaxS(0, False, False, True)
+    #relaxed model keeps deggree constraints
+    con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
+    con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in N)
+    con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
+    con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
+    con9 = m.addConstrs((x[i,j] == 1) >> (u[i]-u[j]+(Q*x[i,j])==Q-1) for i,j in A if i not in E and j not in E and i!=j)
+    m.params.Lazy = 1
+    m.optimize(subtourelim)
+    status = m.status
+    if status == GRB.Status.OPTIMAL:
       print('The optimal objective is %g' % m.objVal)
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
       print('---------FINAL TOUR-----------')
       print(finalTour)
-      print(selected)
-      for i in selected:
-          plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
-      plt.show()
-      return(finalTour)
-      exit(0)
-
+      error = False
+      for t in finalTour:
+        c = 0 
+        for node in t:
+          if node in E:
+            c +=1
+        if c!=1:
+          error=True
+      print(c, error)
+      if not error:
+        # for i in selected:
+        #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+        # plt.show()
+        return(finalTour,e, n)
+        exit(0)
+    counter +=1
+    
   if status in (GRB.Status.INF_OR_UNBD, GRB.Status.INFEASIBLE, GRB.Status.UNBOUNDED):
       print('The relaxed model cannot be solved \
             because it is infeasible or unbounded')
+      return([],e, n)
       exit(1)
-
-  if status != GRB.Status.OPTIMAL:
+  elif status != GRB.Status.OPTIMAL:
       print('Optimization was stopped with status %d' % status)
-      exit(1)
+      return([],e, n)
+      exit(1) 
+  else:
+    return([],e, n) 
+    exit(0) 
+  
+  # return([],e, n)  
 
 def makeAPIAssignments(N, E, locations):
-  
+  # add API key
   gmaps = googlemaps.Client(key=key.API_key)
 
+  # initialise varibales from arguments
   n = len(N)
   e = len(E)
   v = n+e
@@ -188,17 +267,7 @@ def makeAPIAssignments(N, E, locations):
   print(locations)
   c = {(i,j): gmaps.distance_matrix(locations[i], locations[j], mode='walking')["rows"][0]["elements"][0]["distance"]["value"] for i,j in A}
   
-  #place the map in the middle of Cardiff
-  # gmap = gmplot.GoogleMapPlotter(51.481583, -3.179090, 13)
-
-  # print(top_attraction_lats)
-  # gmap.scatter(top_attraction_lats, top_attraction_lons, '#3B0B39', size=40, marker=False)
-  # lat_long = []
-  # for i in V:
-  #  lat_long.append(locations[i])
-  # top_attraction_lats, top_attraction_lons = zip(*lat_long)
-  # gmap.scatter(top_attraction_lats, top_attraction_lons, '#3B0B39', size=40, marker=True)
-  # gmap.draw("my_map.html")
+  #plot markers on graph
   for i in N:
     plt.plot(locations[i][0], locations[i][1], c='b', marker='o')
     plt.annotate('c=%d'%(i),(locations[i][0], locations[i][1]))
@@ -206,6 +275,7 @@ def makeAPIAssignments(N, E, locations):
     plt.plot(locations[i][0], locations[i][1], c='r', marker='s')
     plt.annotate('e=%d'%(i),(locations[i][0], locations[i][1]))
   plt.axis('equal')
+
   #create model
   m = Model()
 
@@ -215,7 +285,7 @@ def makeAPIAssignments(N, E, locations):
 
   m.update()
 
-  # #minimize problem 
+  #minimize problem 
   m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A), GRB.MINIMIZE)
 
   # #constraints
@@ -285,11 +355,13 @@ def makeAPIAssignments(N, E, locations):
         elif len(SUnion) == 2 and len(I)>=2:
           print('only 2 clients and 2 employees')
           model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
-
+        # elif len(SUnion)>0 and len(I)>=2:
+        #   print('more than 1 employee, more than 2 clients')
+        #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
+  
   # Optimize
   m._vars = m.getVars()
   m.params.LazyConstraints = 1
-  # m.params.Threads = 1
   m.params.Cuts = 0
   m.optimize(subtourelim)
   status = m.status
@@ -297,77 +369,86 @@ def makeAPIAssignments(N, E, locations):
   if status == GRB.Status.UNBOUNDED:
       print('The model cannot be solved because it is unbounded')
       exit(0)
-  if status == GRB.Status.OPTIMAL:
+  elif status == GRB.Status.OPTIMAL:
       print('The optimal objective is %g' % m.objVal)
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
       print('---------FINAL TOUR-----------')
       print(finalTour)
-      print(selected)
-      for i in selected:
-        plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
-      plt.show()
-      return finalTour
-      exit(0)
-  if status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
+      error=False
+      for t in finalTour:
+        c = 0 
+        for node in t:
+          if node in E:
+            c +=1
+        if c!=1:
+          error=True
+      if not error:
+        # for i in selected:
+        #   plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
+        # plt.show()
+        return finalTour
+        exit(0)
+  elif status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
       print('Optimization was stopped with status %d' % status)
       exit(0)
 
-  print('The model is infeasible; relaxing the constraints')
-  m.feasRelaxS(0, False, False, True)
-  # m.feasRelaxS(2, True, False, True)
-  # m.relax()
-  m.optimize(subtourelim)
-  status = m.status
-
-  if status == GRB.Status.OPTIMAL:
+#relax infeasible model until valid solution generated
+  counter = 0
+  while counter<=30:
+    print('The model is infeasible; relaxing the constraints until Feasible')
+    m.feasRelaxS(0, False, False, True)
+    #relaxed model keeps deggree constraints
+    con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
+    con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
+    con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
+    con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
+    m.optimize(subtourelim)
+    status = m.status
+    if status == GRB.Status.OPTIMAL:
       print('The optimal objective is %g' % m.objVal)
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
       print('---------FINAL TOUR-----------')
       print(finalTour)
-      print(selected)
-      for i in selected:
-        plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
-      plt.show()
-      return finalTour
-      exit(0)
-
+      error = False
+      for t in finalTour:
+        c = 0 
+        for node in t:
+          if node in E:
+            c +=1
+        if c!=1:
+          error=True
+      if not error:
+        # for i in selected:
+        #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+        # plt.show()
+        return(finalTour,e, n)
+        exit(0)
+    counter +=1
+    
   if status in (GRB.Status.INF_OR_UNBD, GRB.Status.INFEASIBLE, GRB.Status.UNBOUNDED):
       print('The relaxed model cannot be solved \
             because it is infeasible or unbounded')
+      return([],e, n)
       exit(1)
-
   if status != GRB.Status.OPTIMAL:
       print('Optimization was stopped with status %d' % status)
-      exit(1)
-
+      return([],e, n)
+      exit(1) 
 
 
 def makeNoAPIAssignments(N, E, locations):
-
   n = len(N)
   e = len(E)
   v = n+e
   Q = n/e
   V = N+E
   A = [(i,j) for i in V for j in V if i != j]
-  print(locations)
-  c = {(i,j): distance(locations[i], locations[j]) for i,j in A}
-  
-  #place the map in the middle of Cardiff
-  # gmap = gmplot.GoogleMapPlotter(51.481583, -3.179090, 13)
+  c = {(i,j):np.hypot(locations[i][0]-locations[j][0],locations[i][1]-locations[j][1]) for i,j in A}
 
-  # print(top_attraction_lats)
-  # gmap.scatter(top_attraction_lats, top_attraction_lons, '#3B0B39', size=40, marker=False)
-  # lat_long = []
-  # for i in V:
-  #  lat_long.append(locations[i])
-  # top_attraction_lats, top_attraction_lons = zip(*lat_long)
-  # gmap.scatter(top_attraction_lats, top_attraction_lons, '#3B0B39', size=40, marker=True)
-  # gmap.draw("my_map.html")
   for i in N:
     plt.plot(locations[i][0], locations[i][1], c='b', marker='o')
     plt.annotate('c=%d'%(i),(locations[i][0], locations[i][1]))
@@ -375,6 +456,7 @@ def makeNoAPIAssignments(N, E, locations):
     plt.plot(locations[i][0], locations[i][1], c='r', marker='s')
     plt.annotate('e=%d'%(i),(locations[i][0], locations[i][1]))
   plt.axis('equal')
+  
   #create model
   m = Model()
 
@@ -384,7 +466,7 @@ def makeNoAPIAssignments(N, E, locations):
 
   m.update()
 
-  # #minimize problem 
+  #minimize problem 
   m.setObjective(quicksum(c[i,j]*x[i,j] for i,j in A), GRB.MINIMIZE)
 
   # #constraints
@@ -454,11 +536,13 @@ def makeNoAPIAssignments(N, E, locations):
         elif len(SUnion) == 2 and len(I)>=2:
           print('only 2 clients and 2 employees')
           model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
-
+        # elif len(SUnion)>0 and len(I)>=2:
+        #   print('more than 1 employee, more than 2 clients')
+        #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
+  
   # Optimize
   m._vars = m.getVars()
   m.params.LazyConstraints = 1
-  # m.params.Threads = 1
   m.params.Cuts = 0
   m.optimize(subtourelim)
   status = m.status
@@ -466,63 +550,74 @@ def makeNoAPIAssignments(N, E, locations):
   if status == GRB.Status.UNBOUNDED:
       print('The model cannot be solved because it is unbounded')
       exit(0)
-  if status == GRB.Status.OPTIMAL:
+  elif status == GRB.Status.OPTIMAL:
       print('The optimal objective is %g' % m.objVal)
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
       print('---------FINAL TOUR-----------')
       print(finalTour)
-      print(selected)
-      for i in selected:
-        plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
-      plt.show()
-      return finalTour
-      exit(0)
-  if status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
+      error=False
+      for t in finalTour:
+        c = 0 
+        for node in t:
+          if node in E:
+            c +=1
+        if c!=1:
+          error=True
+      if not error:
+        # for i in selected:
+        #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+        # plt.show()
+        return(finalTour,e, n)
+        exit(0)
+  elif status != GRB.Status.INF_OR_UNBD and status != GRB.Status.INFEASIBLE:
       print('Optimization was stopped with status %d' % status)
       exit(0)
-
-  print('The model is infeasible; relaxing the constraints')
-  m.feasRelaxS(0, False, False, True)
-  # m.feasRelaxS(2, True, False, True)
-  # m.relax()
-  m.optimize(subtourelim)
-  status = m.status
-
-  if status == GRB.Status.OPTIMAL:
+  
+  #relax infeasible model until valid solution generated
+  counter = 0
+  while counter<=30:
+    print('The model is infeasible; relaxing the constraints until Feasible')
+    m.feasRelaxS(0, False, False, True)
+    #relaxed model keeps deggree constraints
+    con1_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in N)
+    con1_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in V)
+    con2_1 = m.addConstrs(quicksum(x[i,j] for j in V if j!=i)==1 for i in E)
+    con2_2 = m.addConstrs(quicksum(x[i,j] for i in V if i!=j)==1 for j in E)
+    m.optimize(subtourelim)
+    status = m.status
+    if status == GRB.Status.OPTIMAL:
       print('The optimal objective is %g' % m.objVal)
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
       print('---------FINAL TOUR-----------')
       print(finalTour)
-      print(selected)
-      for i in selected:
-        plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
-      plt.show()
-      return finalTour
-      exit(0)
-
+      error = False
+      for t in finalTour:
+        c = 0 
+        for node in t:
+          if node in E:
+            c +=1
+        if c!=1:
+          error=True
+      if not error:
+        # for i in selected:
+        #   plt.plot((loc_x[i[0]],loc_x[i[1]]), (loc_y[i[0]],loc_y[i[1]]), color='r')
+        # plt.show()
+        return(finalTour,e, n)
+        exit(0)
+    counter +=1
+    
   if status in (GRB.Status.INF_OR_UNBD, GRB.Status.INFEASIBLE, GRB.Status.UNBOUNDED):
       print('The relaxed model cannot be solved \
             because it is infeasible or unbounded')
+      return([],e, n)
       exit(1)
-
   if status != GRB.Status.OPTIMAL:
       print('Optimization was stopped with status %d' % status)
+      return([],e, n)
       exit(1)
 
-def distance(origin, destination):
-    lat1, lon1 = origin
-    lat2, lon2 = destination
-    radius = 6371 # km
-
-    dlat = math.radians(lat2-lat1)
-    dlon = math.radians(lon2-lon1)
-    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
-        * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = radius * c
-
-    return d
+makeRandomAssignments()

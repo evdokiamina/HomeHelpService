@@ -21,7 +21,6 @@ from kivy.garden.mapview import MapView, MapMarker, MarkerMapLayer
 # Builder.load_file("my.kv")
 E, N, locations, data = DB.getDBData()
 tour = DB.runAlgorithm(N, E, locations)
-print(locations)
 
 class LoginScreen(Screen):
   def __init__(self, **kwargs):
@@ -48,19 +47,15 @@ class AssignmentsList(BoxLayout):
   def __init__(self, **kwargs):
     super(AssignmentsList, self).__init__(**kwargs)
     tv = TreeView(root_options=dict(text='Assignments'), hide_root=True)
-    branchName = 'n'
-    c = 1
     for t in tour:
-      branchNameTemp = branchName + str(c)
       for node in t:
         if node in E: 
           itemNameTemp = str(data[node][1]) + ' ' + str(data[node][2])
-          branchNameTemp = tv.add_node(TreeViewLabel(text = itemNameTemp))
+          branchNameTemp = tv.add_node(TreeViewLabel(text =itemNameTemp,  is_open=True))
       for node in t:
         if node not in E:
           dropItem = str(data[node][1]) + ' ' + str(data[node][2])
-          tv.add_node(TreeViewLabel(text = dropItem), branchNameTemp)
-      c+=1
+          tv.add_node(TreeViewLabel(text=dropItem), branchNameTemp)
     self.add_widget(tv)
     tv.bind(on_node_expand=lambda self,evt:ViewMap().nodeExpanded())
     tv.bind(on_node_collapse=lambda self,evt:ViewMap().nodeColapsed())
@@ -78,14 +73,9 @@ class ViewMap(BoxLayout):
       self.mapLayer.add_widget(marker)
     self.mapview.add_layer(self.mapLayer)
     self.add_widget(self.mapview)
-    # self.testWidget = Label(text = 'Helloooo')
-    self.add_widget(self.testWidget)
 
   def nodeExpanded(self):
     print('expanded node')
-    # print(self.testWidget.text)
-    # self.testWidget.text = 'Changed'
-    # print(self.testWidget.text)
 
   def nodeColapsed(self):
     print('node colapsed')
@@ -94,9 +84,6 @@ class DataScreen(Screen):
 
   def __init__(self, **kwargs):
     super(DataScreen, self).__init__(**kwargs)
-  # map = ViewMap()
-  # map.bind(on_node_expand = nodeExpanded())
-    # self.add_widget(AssignmentsList())
   pass
 
 class MainScreen(Screen):

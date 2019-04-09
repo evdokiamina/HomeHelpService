@@ -11,7 +11,7 @@ import numpy as np
 print('run class')
 
 def getDBData():
-    print('run data')
+    print('Connected to Database')
     E = []
     data = {}
     N = []
@@ -100,4 +100,5 @@ def runAlgorithm( N, E, locations):
 
 # E, N, locations, data = getDBData()
 # tour = runAlgorithm(N, E, locations)
+# print(locations)
 # print(tour)
