@@ -19,8 +19,9 @@ from kivy.properties import ObjectProperty, ListProperty
 from kivy.garden.mapview import MapView, MapMarker, MarkerMapLayer
 
 # Builder.load_file("my.kv")
+DB = DB.useDatabase
 E, N, locations, data = DB.getDBData()
-tour = DB.runAlgorithm(N, E, locations)
+tour,e,n,relax = DB.runAlgorithm(N, E, locations)
 
 class LoginScreen(Screen):
   def __init__(self, **kwargs):
