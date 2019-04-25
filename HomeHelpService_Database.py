@@ -96,11 +96,17 @@ class useDatabase:
         print('Running algorithm')
         tour = []
         if N != [] and E!=[] and locations!={}:
-            # tour,e,n, relax  = HomeHelpService.makeAPIAssignments(N, E, locations)
-            tour,e,n,relax  = HomeHelpService.makeNoAPIAssignments(N, E, locations)
+            HHS = HomeHelpService.mainAlgorithm
+            # tour,e,n,relax  = HHS.makeAPIAssignments(N, E, locations)
+            tour,e,n,relax  = HHS.makeNoAPIAssignments(N, E, locations)
             return(tour,e,n,relax)
 
-    # E, N, locations, data = getDBData()
-    # tour = runAlgorithm(N, E, locations)
-    # print(locations)
-    # print(tour)
+#     def main():
+#         E, N, locations, data = getDBData()
+#         tour = runAlgorithm(N, E, locations)
+#         print(locations)
+#         print(tour)
+
+# if __name__ == '__main__':
+#     game = useDatabase
+#     game.main()

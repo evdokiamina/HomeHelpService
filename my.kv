@@ -34,6 +34,14 @@
     BoxLayout:
       orientation: 'horizontal'
       BoxLayout:
+        orientation:'vertical'
+        Label:
+          text:'ASSIGNMENT LIST'
+          size_hint_y: None
+          text_size:None, self.height
+          height: self.texture_size[1]
+          font_size: '20sp'
+          bold:True
         AssignmentsList:
       BoxLayout:
         ViewMap:

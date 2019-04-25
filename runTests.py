@@ -1,16 +1,16 @@
 import csv
 import HomeHelpService as HHS
 import HomeHelpService_Database as DB
-import noDBAssignments as noDB
 import time
 
-with open('testFile_RandomAssignmentRandom.csv', 'w', newline='') as f:
+with open('testFile_RandomAssignment18_20.csv', 'w', newline='') as f:
   thewriter = csv.writer(f)
 
   thewriter.writerow(['execution No.', 'time','tour', 'error', 'relax', 'Employee No.', 'Patient No.'])
-  for i in range(500):
+  for i in range(10):
     start = time.time()
-    tour,e,n, relax = HHS.makeRandomAssignments()
+    callHSS = HHS.mainAlgorithm
+    tour,e,n, relax = callHSS.makeRandomAssignments()
     end = time.time()
     errorTour = ''
     if len(tour)!=e:
