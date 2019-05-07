@@ -22,3 +22,9 @@ To test the code, run the runTests.py file.
 Make sure you set the numeber of employees and clients (or the range to randomly generate them) in the HomeHelpService.py file
 within the makeRandomAssignments() method as well as the number of times you want to test the algorithm by changing the range
 within the runTests.py file 
+
+
+----MORE INFO---
+
+You can get more infromation by visiting the github repo:
+	- https://github.com/evdokiam/HomeHelpService
