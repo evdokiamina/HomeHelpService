@@ -90,7 +90,7 @@ class useDatabase:
         tour = []
         if N != [] and E!=[] and locations!={}:
             HHS = HomeHelpService.mainAlgorithm
-            tour,e,n,relax  = HHS.makeAPIAssignments(N, E, locations) #use this method to make use of the Google Distance API - limit on uses depenting on budget
-            # tour,e,n,relax  = HHS.makeNoAPIAssignments(N, E, locations) #use this method if connection to Google API fails 
+            # tour,e,n,relax  = HHS.makeAPIAssignments(N, E, locations) #use this method to make use of the Google Distance API - limit on uses depenting on budget - also needs configuration details
+            tour,e,n,relax  = HHS.makeNoAPIAssignments(N, E, locations) #use this method if connection to Google API fails 
             return(tour,e,n,relax)
 
