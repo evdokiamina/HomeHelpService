@@ -2,12 +2,9 @@ import mysql.connector
 from mysql.connector import Error
 import HomeHelpService
 import databaseConfig as cfg
-import json
 import names
 import numpy as np
 import random
-
-
 
 print('run class')
 
@@ -26,7 +23,6 @@ class useDatabase:
             
             cursor.execute(employees)
             recordsE = cursor.fetchall()
-            jsonDict = []
             for row in recordsE:
                 E += [row[0]]
                 locations[row[0]]= (row[6], row[7])
@@ -43,7 +39,6 @@ class useDatabase:
                     'gender': row[8]
                     }
                 }
-                jsonDict.append(jd)
         
             cursor.execute(patients)
             recordsN = cursor.fetchall()
@@ -62,11 +57,9 @@ class useDatabase:
                     'long': row[7]
                     }
                 }
-                jsonDict.append(jd)
             
             cursor.close()
             mySQLconnection.close()
-            jsonData =json.dumps(jsonDict, indent=4)
             return(E, N, locations,data)
         except Error as e :
             print ("Error while connecting to MySQL", e)
@@ -97,16 +90,7 @@ class useDatabase:
         tour = []
         if N != [] and E!=[] and locations!={}:
             HHS = HomeHelpService.mainAlgorithm
-            # tour,e,n,relax  = HHS.makeAPIAssignments(N, E, locations)
-            tour,e,n,relax  = HHS.makeNoAPIAssignments(N, E, locations)
+            tour,e,n,relax  = HHS.makeAPIAssignments(N, E, locations) #use this method to make use of the Google Distance API - limit on uses depenting on budget
+            # tour,e,n,relax  = HHS.makeNoAPIAssignments(N, E, locations) #use this method if connection to Google API fails 
             return(tour,e,n,relax)
 
-#     def main():
-#         E, N, locations, data = getDBData()
-#         tour = runAlgorithm(N, E, locations)
-#         print(locations)
-#         print(tour)
-
-# if __name__ == '__main__':
-#     game = useDatabase
-#     game.main()

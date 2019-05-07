@@ -14,10 +14,11 @@ print("Seed was:", rnd.get_state()[1][0])
 class mainAlgorithm:
   def makeRandomAssignments():
     #initialise random employees and patients 
+    #can be changed to use random or specific number
     n = 10
-    e = 3
+    e = 5
     # e = random.randint(3, 10)
-    # n = random.randint(e, 10)
+    # n = random.randint(10, 25)
     v = n+e
     Q = round(n/e)
     N = [i for i in range(n)]
@@ -36,8 +37,6 @@ class mainAlgorithm:
     locations = {}
     for i in range(v):
       locations[i] = (loc_x[i], loc_y[i])
-    print(locations)
-    # locations = {0: (106.94620003914198, 181.70143419328926), 1: (0.7729551371220778, 39.333395427292885), 2: (129.55802510335388, 94.28572788924012), 3: (72.02447789983239, 90.9238203694291), 4: (179.94661901329357, 47.21091576033587), 5: (190.77495940071745, 98.83866522927522), 6: (14.575465594370463, 147.96246087779107), 7: (55.55447672037832, 70.77449161939045), 8: (134.56410638681155, 66.74921446020927), 9: (137.14736345079982, 25.141752159543863), 10: (104.31776988588719, 144.07224689522417), 11: (1.4529080867347943, 110.99618220989831), 12: (137.93553807690466, 70.59449839935678), 13: (113.51200281428, 30.34891138208384), 14: (124.85085986970044, 71.02387286648066), 15: (174.5836123626304, 178.8721228541386), 16: (21.44852627113909, 159.05687341805444), 17: (17.61557466390431, 117.36776287534106)}
     
     #initialise Arcs list and cost list
     A = [(i,j) for i in V  for j in V if i != j]
@@ -113,6 +112,7 @@ class mainAlgorithm:
               if sol > 0.5:
                 selected += [(i,j)]
         tours = subtour(selected)
+        print(selected)
         for t in tours:
           SUnion = []
           I = []
@@ -127,15 +127,8 @@ class mainAlgorithm:
             model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(t, 2))<= len(t)-1)
           elif len(SUnion)>0 and len(I)>=2:
             print('more than 1 employee, more than 2 clients')
-            model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)        # elif len(I)>=2 and len(SUnion) == 1:
-          #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[0]] for i in E if i!=I[0])<=1)
-          # elif len(S)>0 and len(I)>=2:
-          #   print('more than 1 employee, more than 2 clients')
-          #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
-          # elif len(SUnion) == 2 and len(I)>=2:
-          #   print('only 2 clients and 2 employees')
-          #   model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
-    
+            model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1) 
+
     # Optimize
     m._vars = m.getVars()
     m.params.LazyConstraints = 1
@@ -148,9 +141,6 @@ class mainAlgorithm:
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
-      print('---------FINAL TOUR-----------')
-      print(finalTour)
-      print(locations)
       error=False
       for t in finalTour:
         c = 0 
@@ -160,13 +150,13 @@ class mainAlgorithm:
         if c!=1:
           error=True
       if not error:
-        for i in selected:
-          plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
+        #plot tours to visually check validity of assignment 
+        # for i in selected:
+        #   plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
         # plt.show()
         return(finalTour,e, n, 'First Try')
         exit(0)
 
-    
     #relax infeasible model once the quickest way
     print('The model is infeasible; relaxing the constraints once')
     # relaxed model keeps deggree constraints
@@ -178,9 +168,6 @@ class mainAlgorithm:
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
-      print('---------FINAL TOUR-----------')
-      print(finalTour)
-      print(locations)
       error = False
       for t in finalTour:
         c = 0 
@@ -190,14 +177,16 @@ class mainAlgorithm:
         if c!=1:
           error=True
       if not error:
-        for i in selected:
-          plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
+        #plot tours to visually check validity of assignment 
+        # for i in selected:
+        #   plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
         # plt.show()
         return(finalTour,e, n, 'First Relaxation')
         exit(0)
 
     #relax infeasible model until valid solution generated
     counter = 0
+    # while loop can be changed to limit e.g. "while counter <=50" for 50 rounds of check
     while counter>=0:
     # while True:
       print('The model is infeasible; relaxing the constraints until Feasible')
@@ -218,9 +207,6 @@ class mainAlgorithm:
         sol = m.getAttr('x', x)
         selected = [i for i in sol if sol[i] > 0.5]
         finalTour = subtour(selected)
-        print('---------FINAL TOUR-----------')
-        print(finalTour)
-        print(locations)
         error = False
         for t in finalTour:
           c = 0 
@@ -231,8 +217,9 @@ class mainAlgorithm:
             error=True
         print(c, error)
         if not error:
-          for i in selected:
-            plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
+          #plot tours to visually check validity of assignment 
+          # for i in selected:
+          #   plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
           # plt.show()
           return(finalTour,e, n, counter)
           exit(0)
@@ -264,7 +251,7 @@ class mainAlgorithm:
     A = [(i,j) for i in V for j in V if i != j]
     print(locations)
     c = {(i,j): gmaps.distance_matrix(locations[i], locations[j], mode='walking')["rows"][0]["elements"][0]["distance"]["value"] for i,j in A}
-    
+
     #plot markers on graph
     plt.clf() 
     for i in N:
@@ -342,22 +329,13 @@ class mainAlgorithm:
               SUnion.append(node)
             else: 
               I.append(node)
-          # S = SUnion[1:-1]
           if len(I) == 0 and len(t)>1:
             print('no empoloyees')
             model.cbLazy(quicksum(x[i,j] for i,j in itertools.combinations(t, 2))<= len(t)-1)
           elif len(SUnion)>0 and len(I)>=2:
             print('more than 1 employee, more than 2 clients')
             model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
-          # elif len(I)>=2 and len(SUnion) == 1:
-          #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[0]] for i in E if i!=I[0])<=1)
-          # elif len(S)>0 and len(I)>=2:
-          #   print('more than 1 employee, more than 2 clients')
-          #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
-          # elif len(SUnion) == 2 and len(I)>=2:
-          #   print('only 2 clients and 2 employees')
-          #   model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
-          
+
     # Optimize
     m._vars = m.getVars()
     m.params.LazyConstraints = 1
@@ -370,8 +348,6 @@ class mainAlgorithm:
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
-      # print('---------FINAL TOUR-----------')
-      # print(finalTour)
       error=False
       for t in finalTour:
         c = 0 
@@ -384,7 +360,7 @@ class mainAlgorithm:
         # for i in selected:
         #   plt.plot((locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
         # plt.show()
-        return finalTour
+        return(finalTour,e, n, 'First Try')
         exit(0)
     
     #relax infeasible model once the quickest way
@@ -398,9 +374,6 @@ class mainAlgorithm:
       sol = m.getAttr('x', x)
       selected = [i for i in sol if sol[i] > 0.5]
       finalTour = subtour(selected)
-      print('---------FINAL TOUR-----------')
-      print(finalTour)
-      print(locations)
       error = False
       for t in finalTour:
         c = 0 
@@ -410,8 +383,8 @@ class mainAlgorithm:
         if c!=1:
           error=True
       if not error:
-        for i in selected:
-          plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
+        # for i in selected:
+        #   plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
         # plt.show()
         return(finalTour,e, n, 'First Relaxation')
         exit(0)
@@ -419,6 +392,7 @@ class mainAlgorithm:
 
   #relax infeasible model until valid solution generated
     counter = 0
+    # while loop can be changed to limit e.g. "while counter <=50" for 50 rounds of check
     while counter>=0:
     # while True:
       print('The model is infeasible; relaxing the constraints until Feasible')
@@ -439,9 +413,6 @@ class mainAlgorithm:
         sol = m.getAttr('x', x)
         selected = [i for i in sol if sol[i] > 0.5]
         finalTour = subtour(selected)
-        # print('---------FINAL TOUR-----------')
-        # print(finalTour)
-        # print(locations)
         error = False
         for t in finalTour:
           c = 0 
@@ -567,15 +538,7 @@ class mainAlgorithm:
           elif len(SUnion)>0 and len(I)>=2:
             print('more than 1 employee, more than 2 clients')
             model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
-          # elif len(I)>=2 and len(SUnion) == 1:
-          #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,SUnion[0]] for i in E if i!=I[0])<=1)
-          # elif len(S)>0 and len(I)>=2:
-          #   print('more than 1 employee, more than 2 clients')
-          #   model.cbLazy(x[I[0],SUnion[0]] + quicksum(x[i,j] for i in E for j in SUnion if i!=I[0])<=1)
-          # elif len(SUnion) == 2 and len(I)>=2:
-          #   print('only 2 clients and 2 employees')
-          #   model.cbLazy(x[I[0],SUnion[0]] + 3*x[SUnion[0],SUnion[1]] + quicksum(x[i,SUnion[1]] for i in E if i!=I[0])<= 4)    
-    
+
     # Optimize
     m._vars = m.getVars()
     m.params.LazyConstraints = 1
@@ -628,8 +591,8 @@ class mainAlgorithm:
         if c!=1:
           error=True
       if not error:
-        for i in selected:
-          plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
+        # for i in selected:
+        #   plt.plot(( locations[i[0]][0],locations[i[1]][0]), (locations[i[0]][1],locations[i[1]][1]), color='r')
         # plt.show()
         return(finalTour,e, n, 'First Relaxation')
         exit(0)

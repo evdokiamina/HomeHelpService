@@ -44,6 +44,9 @@ class ViewMap(BoxLayout):
 
   def __init__(self, **kwargs):
     super(ViewMap, self).__init__(**kwargs)
+    self.build()
+
+  def build(self):
     self.mapview = MapView(lat=51.48, lon=-3.17, zoom=11)
     self.mapLayer = MarkerMapLayer()
     for i in locations:
@@ -54,11 +57,15 @@ class ViewMap(BoxLayout):
     self.mapview.add_layer(self.mapLayer)
     self.add_widget(self.mapview)
 
+  def update(self):
+    print('updating map')
+
   def nodeExpanded(self):
     print('expanded node')
 
   def nodeColapsed(self):
     print('node colapsed')
+
 
 class DataScreen(Screen):
 
