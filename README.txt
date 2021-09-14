@@ -1,3 +1,8 @@
+------PROJECT INFORMATION-------
+This is my final year Dissertation for my BSc Computer Science degree. 
+The aim of the project is to create a solution for the following probelm:
+	A Home Help Service company has a number X of employees that need to visit a number Y of elders in their home. We need to find the optimal paths such that 	each employee has an even amount of patients to visit as well as finding the optimal path for them to visit each patient.
+
 -----CODE INFORMATION-----
 
 The HomeHelpService.py file includes 3 versions of the same basic job assignment algorithm:
@@ -10,7 +15,14 @@ out and use makeNoAPIAssignments()
 
 
 -----RUN CODE----------
- 
+Ensure you have the following dependecies installed:
+	pip install names
+	pip install mysql-connector-python
+	pip install googlemaps
+	pip install matplotlib
+	pip install gurobipy
+	pip install kivy
+
 To run the code run the following command:
 	python HomeHelpService_API.py 
 
